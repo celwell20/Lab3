@@ -5,13 +5,14 @@
                 proportional gain or a P controller
 @author         Tyler McCue
 @author         Clayton Elwell
-@date           February 3, 2021
+@date           February 10, 2022
 '''
 
 import array
 import utime
-## Tick to degrees conversion attribute
-tick2deg = 1/(256*16*2/360)
+
+## Convert from ticks to degrees
+tick2deg = 1/(256*16*4/360)
 
 class ClosedLoop:
     '''
@@ -49,6 +50,12 @@ class ClosedLoop:
         self.tArray = array.array('f',[])
         ## Position array attribute for plotting
         self.pArray = array.array('f',[])
+        ## Error array of last 10 values
+        self.Error = []
+        ## Attribute to convert from decimal to percent
+        self.perAvg = 100
+        ## Attribute to flag if the step response is done
+        self.done = True
 
     def run(self, feedback):
         '''
@@ -62,7 +69,7 @@ class ClosedLoop:
         self.pArray.append(feedback*tick2deg)
         
         prev = self.actuation
-        self.actuation += self.Kp*(self.reference - feedback)
+        self.actuation = self.Kp*(self.reference - feedback)
         
         diff = prev - self.actuation
         if diff > 0:
@@ -77,6 +84,7 @@ class ClosedLoop:
         elif self.actuation < self.saturation_low:
             self.actuation = self.saturation_low
         return self.actuation
+
 
     def setReference(self, speed):
         '''
@@ -111,13 +119,11 @@ class ClosedLoop:
         #print('Time [sec], Position [deg]')
         for i in range(len(self.tArray)):
             print('{:},{:}'.format(self.tArray[i], self.pArray[i]))
-        self.tArray = []
-        self.pArray = []
+        
         #print(self.tArray, self.pArray)
         
     def send_data(self):
-        '''@brief Sends the collected position and time data in a list
-           @return The list of time and position values collected
-
+        '''@brief Sents time and position arrays upon request
+           @return  Arrays of position and time values
         '''
         return [self.tArray, self.pArray]

@@ -6,7 +6,7 @@
                    has a method that is used to return encoder position and velocity to the encoder task.
    @author         Clayton Elwell
    @author         Tyler McCue
-   @date           February 3, 2022
+   @date           February 10, 2022
 """
 import pyb
 
@@ -55,7 +55,6 @@ class EncoderDriver:
             self.position += (self.delta - 65536)
         else: 
             self.position += self.delta
-        
         return self.position        
 
     def get_position(self):
@@ -70,13 +69,8 @@ class EncoderDriver:
             
            @param pos   The new position of the encoder shaft.
         '''
-        #print('Setting position value')
         self.position = pos
         
-        self.position1 = 0
-        self.position2 = pos
-        self.delta = 0
-        self.timX.counter(0)
     
     def get_delta(self):
         '''@brief      Returns the difference (in ticks) between the two most recent encoder updates.

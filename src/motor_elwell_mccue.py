@@ -4,7 +4,7 @@
               enable, disable, and set the duty cycle for the motors.
     @author    Clayton Elwell
     @author    Tyler McCue
-    @date      January 27, 2022
+    @date      February 10, 2022
 '''
 
 import pyb
@@ -44,8 +44,6 @@ class MotorDriver:
         
         ## Enable/Disable Pin
         self.onoff = pyb.Pin(en_pin, pyb.Pin.OUT_PP)
-        
-        print('Creating motor driver object')
         
     
     def enable(self):

@@ -1,75 +1,50 @@
 """!
-@file basic_tasks.py
-    This file contains a demonstration program that runs some tasks, an
-    inter-task shared variable, and a queue. The tasks don't really @b do
-    anything; the example just shows how these elements are created and run.
+@file main.py
+    This module controls the tasks that run our closed-loop controller, motors, and encoders. In addition
+    it receives inputs from a development PC via serial port, which tells the module when to run a step response
+    on the motors.
 
-@author JR Ridgely
-@date   2021-Dec-15 JRR Created from the remains of previous example
-@copyright (c) 2015-2021 by JR Ridgely and released under the GNU
-    Public License, Version 2. 
+@author Clayton Elwell
+@author Tyler McCue
+@date   February 10, 2022
+
 """
 
 import gc
 import pyb
 import cotask
 import task_share
-import print_task
-import Closed_Loop
+import Closed_Loop as control
 import encoder_elwell_mccue as enc
 import motor_elwell_mccue as moe
+import utime
 
 
-def task_controller():
-    '''!
-    Task that takes encoder updates and uses the update value to calculate the next duty cycle
-    '''
-    while True:
-        update = enc1.update()
-        duty = control.run(update)
-        share_duty.put(duty)
-        if update >= control.getReference():
-            motor1.disable()
-            motor1.set_duty_cycle(0)
-            control.print_data()
-            
-
-def task_motor():
-    '''!
-    Task that takes the calculated duty cycle and uses it to send a PWM signal to the motor
-    '''
-    
-
-def task1_fun ():
+def task_MCU1 ():
     """!
     Task which puts things into a share and a queue.
     """
-    counter = 0
     while True:
-        share0.put (counter)
-        q0.put (counter)
-        counter += 1
-
+        update = enc2.update()
+        duty = control1.run(update)
+        motor1.set_duty_cycle(duty)
         yield (0)
 
 
-def task2_fun ():
+def task_MCU2 ():
     """!
     Task which takes things out of a queue and share to display.
     """
     while True:
-        # Show everything currently in the queue and the value in the share
-        print ("Share: {:}, Queue: ".format (share0.get ()), end='');
-        while q0.any ():
-            print ("{:} ".format (q0.get ()), end='')
-        print ('')
-
+        update = enc1.update()
+        duty = control2.run(update)
+        motor2.set_duty_cycle(duty)
         yield (0)
-
-
+        
 # This code creates a share, a queue, and two tasks, then starts the tasks. The
 # tasks run until somebody presses ENTER, at which time the scheduler stops and
 # printouts show diagnostic information about the tasks, share, and queue.
+
 if __name__ == "__main__":
     
     ## Driver object for first motor
@@ -88,44 +63,60 @@ if __name__ == "__main__":
     
     enc1.set_position(0)
     enc2.set_position(0)
-    ## Object for controller
-    control = control.ClosedLoop(-100, 100, 1, 0, 0)
-    control.setReference(8192)
-    
-    print ('\033[2JTesting ME405 stuff in cotask.py and task_share.py\r\n'
-           'Press ENTER to stop and show diagnostics.')
+    ## Controller object for motor 1
+    control1 = control.ClosedLoop(-100, 100, .008, 0, 0)
+    ## Controller object for motor 2
+    control2 = control.ClosedLoop(-100, 100, .008, 0, 0)
 
-    # Create a share and a queue to test function and diagnostic printouts
-    share_duty = task_share.Share ('f', thread_protect = False, name = "Duty cycle shared variable")
-    #q0 = task_share.Queue ('L', 16, thread_protect = False, overwrite = False,
-                           #name = "Queue 0")
+    ## Create a share and a queue to test function and diagnostic printouts
+    share_duty = task_share.Share ('f', thread_protect = False, name = "Duty Cycle")
+    #q0 = task_share.Queue ('L', 16, thread_protect = False, overwrite = False, name = "Queue 0")
 
     # Create the tasks. If trace is enabled for any task, memory will be
     # allocated for state transition tracing, and the application will run out
     # of memory after a while and quit. Therefore, use tracing only for 
     # debugging and set trace to False when it's not needed
-    controller_cotask = cotask.Task (task_controller, name = 'Task_1', priority = 1, 
-                         period = 400, profile = True, trace = False)
-    motor_cotask = cotask.Task (task_motor, name = 'Task_2', priority = 2, 
-                         period = 1500, profile = True, trace = False)
-    cotask.task_list.append (controller_cotask)
-    cotask.task_list.append (motor_cotask)
+    ## Task for motor 1 that includes the controller and motor/encoder drivers
+    task1 = cotask.Task (task_MCU1, name = 'Task_Motor_1', priority = 1, 
+                         period = 75, profile = True, trace = False)
+    ## Task for motor 2 that includes the controller and motor/encoder drivers
+    task2 = cotask.Task (task_MCU2, name = 'Task_Motor_2', priority = 1, 
+                         period = 75, profile = True, trace = False)
+    cotask.task_list.append (task1)
+    cotask.task_list.append (task2)
 
     # Run the memory garbage collector to ensure memory is as defragmented as
     # possible before the real-time scheduler is started
     gc.collect ()
 
-    # Run the scheduler with the chosen scheduling algorithm. Quit if any 
-    # character is received through the serial port
-    vcp = pyb.USB_VCP ()
-    while not vcp.any ():
-        cotask.task_list.pri_sched ()
-
-    # Empty the comm port buffer of the character(s) just pressed
-    vcp.read ()
-
-    # Print a table of task data and a table of shared information data
-    print ('\n' + str (cotask.task_list))
-    print (task_share.show_all ())
-    print (task1.get_trace ())
-    print ('\r\n')
+    while True:
+        ## Input received via the serial port from the development computer
+        x = input()
+        if x == "a":
+            ## Setpoint for the motors
+            ref = float(input())
+            control1.setReference(ref)
+            ref = float(input())
+            control2.setReference(ref)
+        elif x == "b":
+            ## Proportional gain for the motors
+            new = float(input())
+            control1.set_Kp(new)
+            new = float(input())
+            control2.set_Kp(new)
+        elif x == "c":
+            new = int(input())
+            motor1.enable()
+            motor2.enable()
+            ## Time at which the step response execution begins
+            start = utime.ticks_ms()
+            while (utime.ticks_diff(utime.ticks_ms(),start) < new*1000):
+                cotask.task_list.pri_sched()
+            motor1.disable()
+            motor2.disable()
+            print("start")
+            for i in range(min(len(control1.tArray),len(control2.tArray))):
+                print('{:},{:},{:},{:}'.format(control1.tArray[i], control1.pArray[i],control2.tArray[i], control2.pArray[i]))
+            print("stop")
+            
+        
