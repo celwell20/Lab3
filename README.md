@@ -20,11 +20,11 @@ to less than 100 ms, we observed diminishing step response returns.
 
 ![Step response with motor task frequency of 400 ms](Kp=0.01{PER=400}.png)
 <br>
-Figure 1. Step response with controller frequency of 400 Hz; *K<sub>P</sub>* = 0.01. 
+Figure 1. Step response with controller frequency of 400 ms; *K<sub>P</sub>* = 0.01. 
 
 ![Step response with motor task frequnecy of 100 ms](Kp=0.01.png)
 <br>
-Figure 2. Step response with controller frequency of 100 Hz; *K<sub>P</sub>* = 0.01.
+Figure 2. Step response with controller frequency of 100 ms; *K<sub>P</sub>* = 0.01.
 
 We found that depending on the motor task frequency, sometimes our microcontroller would not correctly interpret user input commands
 from our PC. Resetting the microcontroller and rerunning the CPython program once or twice usually fixes this issue and allows us to
