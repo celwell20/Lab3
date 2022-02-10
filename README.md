@@ -18,7 +18,7 @@ ms. The recommended speed at which the motor task should be run is 100 ms. Figur
 a plot of the step response with the recommended frequency. After decreasing the task period
 to less than 100 ms, we observed diminishing step response returns.
 
-![Step response with motor task frequency of 400 ms](Kp=0.01(PER=400).png)
+![Step response with motor task frequency of 400 ms](Kp=0.01{PER=400}.png)
 <br>
 Figure 1. Step response with controller frequency of 400 Hz; *K<sub>P</sub>* = 0.01. 
 
